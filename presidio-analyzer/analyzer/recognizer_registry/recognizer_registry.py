@@ -1,3 +1,4 @@
+import os
 import time
 import logging
 
@@ -55,8 +56,15 @@ class RecognizerRegistry:
             IpRecognizer(), NhsRecognizer(),
             UsBankRecognizer(), UsLicenseRecognizer(),
             UsItinRecognizer(), UsPassportRecognizer(),
-            UsPhoneRecognizer(), UsSsnRecognizer(),
-            SpacyRecognizer()])
+            UsPhoneRecognizer(), UsSsnRecognizer()])
+
+        # Okera addition
+        if 'PRESIDIO_DISABLE_ML' in os.environ and \
+                os.environ['PRESIDIO_DISABLE_ML'] == 'true':
+            logging.info("Disabling ML recognizer.")
+        else:
+            logging.info("Enabling ML recognizer.")
+            self.recognizers.extend([SpacyRecognizer()])
 
     def get_recognizers(self, language, entities=None,
                         all_fields=False):

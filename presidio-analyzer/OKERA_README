@@ -9,4 +9,4 @@ To install locally.
 This can be used to our s3 dev bucket to be assembled to our docker container.
 For example:
 
-  aws s3 cp <path to sheel file> s3://cerebrodata-dev/presidio_analyzer-0.0.1-py2.py3-none-any.whl --acl public-read
+  aws s3 cp dist/dist/presidio_analyzer-0.0.1-py2.py3-none-any.whl s3://cerebrodata-dev/presidio/[date]/presidio_analyzer-0.0.1-py2.py3-none-any.whl --acl public-read
