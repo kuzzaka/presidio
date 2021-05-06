@@ -59,12 +59,12 @@ class RecognizerRegistry:
             UsPhoneRecognizer(), UsSsnRecognizer()])
 
         # Okera addition
-        if 'PRESIDIO_DISABLE_ML' in os.environ and \
-                os.environ['PRESIDIO_DISABLE_ML'] == 'true':
-            logging.info("Disabling ML recognizer.")
-        else:
+        if 'PRESIDIO_ENABLE_ML' in os.environ and \
+                os.environ['PRESIDIO_ENABLE_ML'] == 'true':
             logging.info("Enabling ML recognizer.")
             self.recognizers.extend([SpacyRecognizer()])
+        else:
+            logging.info("Disabling ML recognizer.")
 
     def get_recognizers(self, language, entities=None,
                         all_fields=False):
