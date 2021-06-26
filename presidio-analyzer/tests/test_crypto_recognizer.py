@@ -1,34 +1,35 @@
-from unittest import TestCase
+import pytest
 
-from assertions import assert_result
-from analyzer.predefined_recognizers import CryptoRecognizer
-from analyzer.entity_recognizer import EntityRecognizer
+from tests import assert_result
+from presidio_analyzer.predefined_recognizers import CryptoRecognizer
 
-crypto_recognizer = CryptoRecognizer()
-entities = ["CRYPTO"]
+
+@pytest.fixture(scope="module")
+def recognizer():
+    return CryptoRecognizer()
+
+
+@pytest.fixture(scope="module")
+def entities():
+    return ["CRYPTO"]
 
 
 # Generate random address https://www.bitaddress.org/
-
-class TestCreditCardRecognizer(TestCase):
-
-    def test_valid_btc(self):
-        wallet = '16Yeky6GMjeNkAiNcBY7ZhrLoMSgg1BoyZ'
-        results = crypto_recognizer.analyze(wallet, entities)
-
-        assert len(results) == 1
-        assert_result(results[0], entities[0], 0, 34, EntityRecognizer.MAX_SCORE)
-
-    def test_valid_btc_with_exact_context(self):
-        wallet = '16Yeky6GMjeNkAiNcBY7ZhrLoMSgg1BoyZ'
-        context = 'my wallet address is: '
-        results = crypto_recognizer.analyze(context + wallet, entities)
-
-        assert len(results) == 1
-        assert_result(results[0], entities[0], 22, 56, EntityRecognizer.MAX_SCORE)
-
-    def test_invalid_btc(self):
-        wallet = '16Yeky6GMjeNkAiNcBY7ZhrLoMSgg1BoyZ2'
-        results = crypto_recognizer.analyze('my wallet address is ' + wallet, entities)
-
-        assert len(results) == 0
+@pytest.mark.parametrize(
+    "text, expected_len, expected_positions",
+    [
+        # fmt: off
+        ("16Yeky6GMjeNkAiNcBY7ZhrLoMSgg1BoyZ", 1, ((0, 34),),),
+        ("my wallet address is: 16Yeky6GMjeNkAiNcBY7ZhrLoMSgg1BoyZ", 1, ((22, 56),),),
+        ("16Yeky6GMjeNkAiNcBY7ZhrLoMSgg1BoyZ2", 0, ()),
+        ("my wallet address is: 16Yeky6GMjeNkAiNcBY7ZhrLoMSgg1BoyZ2", 0, ()),
+        # fmt: on
+    ],
+)
+def test_when_all_cryptos_then_succeed(
+    text, expected_len, expected_positions, recognizer, entities, max_score
+):
+    results = recognizer.analyze(text, entities)
+    assert len(results) == expected_len
+    for res, (st_pos, fn_pos) in zip(results, expected_positions):
+        assert_result(res, entities[0], st_pos, fn_pos, max_score)

@@ -1,202 +1,273 @@
-# Development
+# Setting Up a Development Environment
 
-## Setting up the environment - Golang
+## Table of contents
 
-1. Docker
+## Getting started
 
-***Note that the port mapping will conflict with running `make test`***
+### Cloning the repo
 
-2. Redis
+To create a local copy of Presidio repository, follow [Github instructions](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository)
+on how to clone a project using git.
+The project is structured so that:
 
-    ```sh
-    docker run --name dev-redis -d -p 6379:6379 redis
+- Each Presidio service has a designated directory:
+  - The service logic.
+  - Tests, both unit and integration.
+  - Serving it as an HTTP service (found in app.py).
+  - Python Packaging setup script (setup.py).
+- In the project root directory, you will find common code for using, serving and testing Presidio
+    as a cluster of services, as well as CI/CD pipelines codebase and documentation.
+
+### Setting up Pipenv
+
+[Pipenv](https://pipenv.pypa.io/en/latest/) is a Python workflow manager, handling
+dependencies and environment for Python packages. It is used by each Presidio service
+as the dependencies manager, to be aligned with the specific requirements versions.
+Follow these steps when starting to work on a Presidio service with Pipenv:
+
+1. Install Pipenv
+
+    - Using Pip
+
+        ```sh
+        pip install --user pipenv
+        ```
+
+    - Using Homebrew (in MacOS)
+
+        ```
+        brew install pipenv
+        ```
+
+    Additional installation instructions for Pipenv: <https://pipenv.readthedocs.io/en/latest/install/#installing-pipenv>
+
+2. Have Pipenv create a virtualenv for the project and install all requirements in the Pipfile,
+    including dev requirements.
+
+    For example, in the `presidio-analyzer` folder, run:
+
+    ```
+    pipenv install --dev --sequential --skip-lock
     ```
 
-3. Install go 1.11 and Python 3.7
+3. Run all tests:
 
-4. Install the golang packages via [dep](https://github.com/golang/dep/releases)
-
-    ```sh
-    dep ensure
-    ```
-
-5. Install [tesseract](https://github.com/tesseract-ocr/tesseract/wiki) OCR framework.
-
-## Setting up the environment - Python
-
-1. Build and install [re2](https://github.com/google/re2) (Optional. Presidio will use `regex` instead of `pyre2` if `re2` is not installed)
-
-    ```sh
-    re2_version="2018-12-01"
-    wget -O re2.tar.gz https://github.com/google/re2/archive/${re2_version}.tar.gz
-    mkdir re2 
-    tar --extract --file "re2.tar.gz" --directory "re2" --strip-components 1
-    cd re2 && make install
-    ```
-
-2. Install pipenv
-
-    [Pipenv](https://pipenv.readthedocs.io/en/latest/) is a Python workflow manager, handling dependencies and environment for python packages, it is used in the Presidio's Analyzer project as the dependencies manager
-    #### Using Pip3:
-    ```
-    pip3 install --user pipenv
-    ```
-    #### Homebrew
-    ```
-    brew install pipenv
-    ```
-
-    Additional installation instructions: https://pipenv.readthedocs.io/en/latest/install/#installing-pipenv
-
-3. Create virtualenv for the project & Install all requirements in the Pipfile, including dev requirements
-Install the Python packages for the analyzer in the `presidio-analyzer` folder, run:
-    ```
-    pipenv install --dev --sequential
-    ```
-
-4. Run all tests
     ```
     pipenv run pytest
     ```
 
-5. To run arbitrary scripts within the virtual env, start the command with `pipenv run`. For example:
-    1. `pipenv run flake8 analyzer --exclude "*pb2*.py"`
-    2. `pipenv run pylint analyzer`
-    3. `pipenv run pip freeze`
+4. To run arbitrary scripts within the virtual env, start the command with
+    `pipenv run`. For example:
+    1. `pipenv run flake8`
+    2. `pipenv run pip freeze`
+    3. `pipenv run python -m spacy download en_core_web_lg`
 
-#### Alternatively, activate the virtual environment and use the commands by starting a pipenv shell:
+    Command 3 downloads the default spacy model needed for Presidio Analyzer.`
+
+#### Alternatively, activate the virtual environment and use the commands by starting a pipenv shell
 
 1. Start shell:
 
     ```
     pipenv shell
     ```
+
 2. Run commands in the shell
 
     ```
     pytest
-    pylint analyzer
     pip freeze
     ```
-    
-## Changing Presidio's API
-Presidio leverages [protobuf](https://github.com/golang/protobuf) to create API classes and services across multiple environments. The proto files are stored on a different [Github repo](https://github.com/Microsoft/presidio-genproto)
 
-Follow these steps to change Presidio's API:
-1. Fork the [presidio-genproto](https://github.com/Microsoft/presidio-genproto) repo into `YOUR_ORG/presidio-genproto`
-2. Clone the repo into the `$GOPATH/src/github.com/YOUR_ORG/presidio-genproto` folder
-3. Make the desired changes to the .proto files in /src
-4. Make sure you have [protobuf](https://github.com/golang/protobuf) installed
-5. Generate the Go and Python files. Run the following commands in the `src` folder of `presidio-genproto`:
+### Development guidelines
+
+- A Github issue suggesting the change should be opened prior to a PR.
+- All contributions should be documented, tested and linted. Please verify that all tests and lint checks pass successfully before proposing a change.
+- To make the linting process easier, you can use [pre-commit hooks](#automatically-format-code-and-check-for-code-styling) to verify and automatically format code upon a git commit
+- In order for a pull request to be accepted, the CI (containing unit tests, e2e tests and linting) needs to succeed, in addition to approvals from two maintainers.
+- PRs should be small and solve/improve one issue at a time. If you have multiple suggestions for improvement, please open multiple PRs.
+
+### Local build process
+
+After modifying presidio codebase, you might want to build presidio cluster locally, and run tests to spot regressions.
+The recommended way of doing so is using docker-compose (bundled with 'Docker Desktop' for Windows and Mac systems,
+more information can be found [here](https://docs.docker.com/compose/install/)).
+Once installed, to start presidio cluster with all of its services in HTTP mode, run from the project root:
+
+```bash
+docker-compose up --build -d
+```
+
+!!! note "Note"
+    Building for the first time might take some time,
+    mainly on downloading the default spacy models.
+
+To validate that the services were built and started successfully,
+and to see the designated port for each,
+use docker-compose ps:
+
+```bash
+>docker-compose ps
+CONTAINER ID   IMAGE                       COMMAND                  CREATED         STATUS         PORTS                    NAMES
+6d5a258d19c2   presidio-anonymizer         "/bin/sh -c 'pipenv …"   6 minutes ago   Up 6 minutes   0.0.0.0:5001->5001/tcp   presidio_presidio-anonymizer_1
+9aad2b68f93c   presidio-analyzer           "/bin/sh -c 'pipenv …"   2 days ago      Up 6 minutes   0.0.0.0:5002->5001/tcp   presidio_presidio-analyzer_1
+1448dfb3ec2b   presidio-image-redactor     "/bin/sh -c 'pipenv …"   2 seconds ago   Up 2 seconds   0.0.0.0:5003->5001/tcp   presidio_presidio-image-redactor_1
+```
+
+Edit docker-compose.yml configuration file to change the default ports.
+
+Starting part of the cluster, or one service only, can be done by stating its image name as argument for docker-compose.
+For example for analyzer service:
+
+```bash
+docker-compose up --build -d presidio-analyzer
+```
+
+### Testing
+
+We strive to have a full test coverage in Presidio, and expect every pull request to
+include tests.
+
+In each service directory, a 'test' directory can be found. In it, both unit tests,
+for testing single files or classes, and integration tests, for testing integration
+between the service components, or integration with external packages.
+
+#### Basic conventions
+
+For tests to be consistent and predictable, we use the following basic conventions:
+
+1. Treat tests as production code. Keep the tests concise and readable, with descriptive namings.
+2. Assert on one behavior at a time in each test.
+3. Test names should follow a pattern of `test_when_[condition_to_test]_then_[expected_behavior]`.
+   For example: `test_given_an_unknown_entity_then_anonymize_uses_defaults`.
+4. Use [test doubles and mocks](https://docs.pytest.org/en/stable/monkeypatch.html)
+   when writing unit tests. Make less use of them when writing integration tests.
+
+#### Running tests
+
+Presidio uses the [pytest](http://doc.pytest.org/) framework for testing.
+See the pytest [documentation](https://docs.pytest.org/en/latest/contents.html)
+for more information.
+
+Running the tests locally can be done in two ways:
+
+1. Using cli, from each service directory, run:
 
     ```sh
-    python -m grpc_tools.protoc -I . --python_out=../python --grpc_python_out=../python ./*.proto
-
-    protoc -I . --go_out=plugins=grpc:../golang ./*.proto
+    pipenv run pytest
     ```
-    
- 5. Copy all the files in the `python` folder into `presidio-analyzer/analyzer`. All generated files end with `*pb2.py` or `*pb2_grpc.py`
- 6. Change the constraint on `Gopkg.toml` which directs to the location of `presidio-genproto`
-From:
 
-```yaml
-[[constraint]]
-  branch = "master"
-  name = "github.com/Microsoft/presidio-genproto"
-```
+2. Using your IDE.
+   See configuration examples for
+   [JetBrains PyCharm / IntelliJ IDEA](https://www.jetbrains.com/help/pycharm/creating-run-debug-configuration-for-tests.html)
+   and [Visual Studio Code](https://code.visualstudio.com/docs/python/testing)
 
-To:
+#### End-to-end tests
 
-```yaml
-[[constraint]]
-  branch = "YOUR_GENPROTO_BRANCH"
-  name = "github.com/YOUR_ORG/presidio-genproto"
+Since Presidio services can function as HTTP servers, Presidio uses an additional
+end-to-end (e2e) testing layer to test their REST APIs.
+This e2e test framework is located under 'e2e-tests' directory.
+In it, you can also find test scenarios testing the integration between
+Presidio services through REST API.
+These tests should be annotated with 'integration' pytest marker `@pytest.mark.integration`,
+while tests calling a single service API layer should be annotated with 'api'
+pytest marker `@pytest.mark.api`.
 
-```
-  7. Update `Gopkg.lock` by calling `dep ensure` or `dep ensure --update github.com/YOUR_ORG/presidio-genproto`
-  8. Push all the changes (generated python files, `Gopkg.toml` and `Gopkg.lock` into your presidio repo
+Running the e2e-tests locally can be done in two ways:
 
-For more info, see https://grpc.io/docs/tutorials/basic/python.html
+1. Using cli, from e2e-tests directory, run:
 
-
-## Development notes
-
-- Build the bins with `make build`
-- Build the base containers with `make docker-build-deps DOCKER_REGISTRY=${DOCKER_REGISTRY} PRESIDIO_DEPS_LABEL=${PRESIDIO_DEPS_LABEL}` (If you do not specify a valid, logged-in, registry a warning will echo to the standard output)
-- Build the the Docker image with `make docker-build DOCKER_REGISTRY=${DOCKER_REGISTRY} PRESIDIO_DEPS_LABEL=${PRESIDIO_DEPS_LABEL} PRESIDIO_LABEL=${PRESIDIO_LABEL}`
-- Push the Docker images with `make docker-push DOCKER_REGISTRY=${DOCKER_REGISTRY} PRESIDIO_LABEL=${PRESIDIO_LABEL}`
-- Run the tests with `make test`
-- Adding a file in go requires the `make go-format` command before running and building the service.
-- Run functional tests with `make test-functional`
-- Updating python dependencies [instructions](./pipenv_readme.md)
-
-### Set the following environment variables
-
-#### presidio-analyzer
-
-- `GRPC_PORT`: `3001` GRPC listen port
-
-#### presidio-anonymizer
-
-- `GRPC_PORT`: `3002` GRPC listen port
-
-#### presidio-api
-
-- `WEB_PORT`: `8080` HTTP listen port
-- `REDIS_URL`: `localhost:6379`, Optional: Redis address
-- `ANALYZER_SVC_ADDRESS`: `localhost:3001`, Analyzer address
-- `ANONYMIZER_SVC_ADDRESS`: `localhost:3002`, Anonymizer address
-
-### Developing only for Presidio Analyzer under Windows environment
-Run locally the core services Presidio needs to operate:
-```
-docker run --rm --name test-redis --network testnetwork -d -p 6379:6379 redis
-docker run --rm --name test-presidio-anonymizer --network testnetwork -d -p 3001:3001 -e GRPC_PORT=3001 mcr.microsoft.com/presidio-anonymizer:latest
-docker run --rm --name test-presidio-recognizers-store --network testnetwork -d -p 3004:3004 -e GRPC_PORT=3004 -e REDIS_URL=test-redis:6379 mcr.microsoft.com/presidio-recognizers-store:latest
-```
-Naviagate to `<Presidio folder>\presidio-analyzer\`
-
-Install the python packages if didn't do so yet:
-```sh
-pipenv install --dev --sequential
-```
-
-To simply run unit tests, execute:
-```
-pipenv run pytest --log-cli-level=0
-```
-
-If you want to experiment with `analyze` requests, navigate into the `analyzer` folder and start serving the analyzer service:
-```sh
-pipenv run python __main__.py serve --grpc-port 3000
-```
-
-In a new `pipenv shell` window you can run `analyze` requests, for example:
-```
-pipenv run python __main__.py analyze --text "John Smith drivers license is AC432223" --fields "PERSON" "US_DRIVER_LICENSE" --grpc-port 3000
-```
-
-
-
-## Load test
-
-1. Edit  `post.lua`. Change the template name
-2. Run [wrk](https://github.com/wg/wrk)
+    On Mac / Linux / WSL:
 
     ```sh
-    wrk -t2 -c2 -d30s -s post.lua http://<api-service-address>/api/v1/projects/<my-project>/analyze
+    # Create a virtualenv named presidio-e2e (needs to be done only on the first run)
+    python -m venv presidio-e2e
+    # Activate the virtualenv
+    source presidio-e2e/bin/activate
+    # Install e2e-tests requirements using pip
+    pip install -r requirements.txt
+    # Run pytest
+    pytest
+    # Deactivate the virtualenv
+    deactivate
     ```
 
+    On Windows CMD / Powershell:
 
-## Running in kubernetes
+    ```shell
+    # Create a virtualenv named presidio-e2e (needs to be done only on the first run)
+    py -m venv presidio-e2e
+    # Activate the virtualenv
+    presidio-e2e\Scripts\activate
+    # Install e2e-tests requirements using pip
+    pip install -r requirements.txt
+    # Run pytest
+    pytest
+    # Deactivate the virtualenv
+    deactivate
+    ```
 
-1. If deploying from a private registry, verify that Kubernetes has access to the [Docker Registry](https://docs.microsoft.com/en-us/azure/container-registry/container-registry-auth-aks).
+2. Using your IDE
 
-2. If using a Kubernetes secert to manage the registry authentication, make sure it is registered under 'presidio' namespace
+    See references in the section above.
 
-### Further configuration
+!!! note "Note"
+    The e2e tests require a Presidio cluster to be up, for example using the containerized cluster with docker-compose.
 
-Edit [charts/presidio/values.yaml](../charts/presidio/values.yaml) to:
-- Setup secret name (for private registries)
-- Change presidio services version
-- Change default scale
+### Build and run end-to-end tests locally
+
+Building and testing presidio locally, as explained above, can give good assurance on new changes and on regressions
+that might have introduced during development.
+As an easier method to build and automatically run end-to-end tests, is to use the `run.bat` script found in the project root:
+
+On Mac / Linux / WSL:
+
+```sh
+chmod +x run.bat
+./run.bat
+```
+
+On Windows CMD / Powershell:
+
+```shell
+run.bat
+```
+
+### Linting
+
+Presidio services are PEP8 compliant and continuously enforced on style guide issues during the build process using `flake8`.
+
+Running flake8 locally, using `pipenv run flake8`, you can check for those issues prior to committing a change.
+
+In addition to the basic `flake8` functionality, Presidio uses the following extensions:
+
+- _pep8-naming_: To check that variable names are PEP8 compliant.
+- _flake8-docstrings_: To check that docstrings are compliant.
+
+### Automatically format code and check for code styling
+
+To make the linting process easier, you can use pre-commit hooks to verify and automatically format code upon a git commit, using `black`:
+
+1. [Install pre-commit package manager locally.](https://pre-commit.com/#install)
+
+2. From the project's root, enable pre-commit, installing git hooks in the `.git/` directory by running: `pre-commit install`.
+
+3. Commit non PEP8 compliant code will cause commit failure and automatically
+    format your code using `black`, as well as checking code formatting using `flake8`
+
+        ```sh
+        >git commit -m 'autoformat' presidio-analyzer/presidio_analyzer/predefined_recognizers/us_ssn_recognizer.py
+
+        black....................................................................Failed
+        - hook id: black
+        - files were modified by this hook
+
+        reformatted presidio-analyzer/presidio_analyzer/predefined_recognizers/us_ssn_recognizer.py
+        All done!
+        1 file reformatted.
+
+        flake8...................................................................Passed
+
+        ```
+
+4. Committing again will finish successfully, with a well-formatted code.

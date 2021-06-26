@@ -1,59 +1,59 @@
-# Presidio build and release
+# Build and release process
 
-Presidio continuous processes govern its integrity and stability through the dev, test and and release phases.
-The project currently supports [Azure Pipelines](https://azure.microsoft.com/en-us/services/devops/pipelines/) using YAML pipelines which can be easily imported to any Azure Pipelines instance.<br/>
+Presidio leverages Azure DevOps YAML pipelines to validate, build, release and deliver presidio.
+The pipelines make use of [templates](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/templates?view=azure-devops)
+for code reuse using [YAML Schema](https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema).
 
-## Presidio Azure Devops Pipelines
+## Description
 
-Azure Pipelines [YAML Schema](https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema) allows for code reuse using [templates](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/templates?view=azure-devops).<br/>
+The following pipelines are provided and maintained as part of presidio development process:
 
-***[Presidio Build and Push template](../pipelines/templates/presidio-build-template.yaml)*** - build, test and push presidio images
+-   [PR Validation](https://github.com/microsoft/presidio/blob/main/azure-pipelines.yml) - used to validate pull requests.
+    -   Linting
+    -   Security and compliance analysis
+    -   Unit tests
+    -   E2E tests
+-   [CI](https://github.com/microsoft/presidio/blob/main/azure-pipelines-ci.yml) - triggered on merge to main branch.
+    -   Linting
+    -   Security and compliance analysis
+    -   Unit tests
+    -   E2E tests
+    -   deploys the artifacts to an internal dev environment.
+-   [Release](https://github.com/microsoft/presidio/blob/main/azure-pipelines.yml) - manually triggered.
+    -   releases presidio official artifacts
+        -   pypi
+        -   Microsoft container registry (and docker hub)
+        -   GitHub
+    -   updates the official demo environment.
 
-- Push and publish steps only taken when build is not triggered by a PR.
-- Parameters:
-    - registry_parameter - the name of container registry service connection
-    - registry_name_parameter - the full name of the registry login
-    - deps_label_parameter - the base image (deps) label to be used for container build
+### Variables used by the pipelines
 
-The following pipelines are provided:
+#### CI Pipeline
 
-***[Deps CI Pipeline](../pipelines/CI-deps.yaml)*** - build and test persidio and its base images for golang and python.  
+-   **_ACR_AZURE_SUBSCRIPTION_** - Service connection to Azure subscription where Azure Container Registry is.
+-   **_ACR_REGISTRY_NAME_** - Name of Azure Container Registry.
+-   **_ANALYZER_DEV_APP_NAME_** - Name of existing App Service for Analyzer (development environment).
+-   **_ANONYMIZER_DEV_APP_NAME_** - Name of existing App Service for Anonymizer (development environment).
+-   **_IMAGE_REDACTOR_DEV_APP_NAME_** - Name of existing App Service for Image Redactor (development environment).
+-   **_DEV_AZURE_SUBSCRIPTION_** - Service connection to Azure subscription where App Services are (development environment).
+-   **_DEV_RESOURCE_GROUP_NAME_** - Name of resource group where App Services are (development environment).
 
-- Base images are always pushed with build-id (in PR and CI)
-- After a succesful build of presidio images, deps is tagged and pushed according to current branch
-- Presidio images are built using deps label for the current build-id and pushed according to branch strategy (see Presidio-CI pipeline below)
-- Golang and Python deps are build in parallel using different [pipeline stages](https://docs.microsoft.com/en-us/azure/devops/pipelines/process/stages?view=azure-devops&tabs=yaml)
+#### Release Pipeline
 
-***[Presidio CI Pipeline](../pipelines/CI-presidio.yaml)*** - build and test persidio services images based on pre-built deps labels. 
+-   **_ACR_AZURE_SUBSCRIPTION_** - Service connection to Azure subscription where Azure Container Registry is.
+-   **_ACR_REGISTRY_NAME_** - Name of Azure Container Registry.
+-   **_ANALYZER_PROD_APP_NAME_** - Name of existing App Service for Analyzer (production environment).
+-   **_ANONYMIZER_PROD_APP_NAME_** - Name of existing App Service for Anonymizer (production environment).
+-   **_PROD_AZURE_SUBSCRIPTION_** - Service connection to Azure subscription where App Services are (production environment).
+-   **_PROD_RESOURCE_GROUP_NAME_** - Name of resource group where App Services are (production environment).
 
-- Depending on branch, images will be pushed with build-id and:
-    -   **master branch** - using deps "latest" label and pushed with "latest" tag
-    -   **development branch** - using deps "latest-dev" label and pushed with "latest-dev" tag
-    -   **feature branch** - using deps "latest-dev" label, or other if overriden manualy during build, and pushed with branch-name tag.
-- Artifacts generated by a PR CI are not pushed to container registry
-- Presidio CI triggered by build-dependency to deps-CI will use deps images label with the build-id of the triggering CI
-- Feature branches are not supported for build-dependency. after CI-deps completes, a manual trigger of CI-Presidio is required.
+### Import a pipeline to Azure Devops
 
-### Note that the following settings have to be set in Azure Pipelines, for each imported pipeline:
-
-#### Variables
-* ***REGISTRY*** - a docker registry service endpoint to your private docker registry
-* ***REGISTRY_NAME*** - the name of the registry
-* ***DEPENDENCY_DEFAULT*** - override dependency label in a Presidio-CI build.
-
-
-### import a pipeline to Azure Devops
-
-* Sign in to your Azure DevOps organization and navigate to your project.
-
-* In your project, navigate to the Pipelines page. Then choose the action to create a new pipeline.
-
-* Walk through the steps of the wizard by first selecting 'Use the classic editor, and select GitHub as the location of your source code.
-
-* You might be redirected to GitHub to sign in. If so, enter your GitHub credentials.
-
-* When the list of repositories appears, select presidio repository.
-
-* Point Azure Pipelines to the relevant yaml definition you'd like to import. Set the pipeline's name, the required triggers and variables and Select Save and run.
-
-* A new run is started. Wait for the run to finish.
+-   Sign in to your Azure DevOps organization and navigate to your project.
+-   In your project, navigate to the Pipelines page. Then choose the action to create a new pipeline.
+-   Walk through the steps of the wizard by first selecting 'Use the classic editor, and select GitHub as the location of your source code.
+-   You might be redirected to GitHub to sign in. If so, enter your GitHub credentials.
+-   When the list of repositories appears, select presidio repository.
+-   Point Azure Pipelines to the relevant yaml definition you'd like to import.
+    Set the pipeline's name, the required triggers and variables and Select Save and run.
+-   A new run is started. Wait for the run to finish.

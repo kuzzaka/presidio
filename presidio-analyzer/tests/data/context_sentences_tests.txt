@@ -60,6 +60,9 @@ my DRIVER LICENSE is: 7774567901234
 US_DRIVER_LICENSE
 my DrIvEr LiCeNsE is: 7774567901234
 
+ABA_ROUTING_NUMBER
+routing number is: 101205681
+
 US_BANK_NUMBER
 my bank account number is 912803456
 
@@ -83,3 +86,11 @@ my passport number is hi bye hello 912803456
 # Verify adjacent context words
 US_PASSPORT
 mypassportnumberis912803456
+
+# Verify SG NRIC/FIN context words
+FIN
+Special NRIC numbers e.g. S0000001I that are numerically significant have been issued to notable people Yusof bin Ishak, first President of Singapore
+
+# Verify SG NRIC/FIN mixed case (e.g. lower case )
+FIN
+my fin is g3300299L

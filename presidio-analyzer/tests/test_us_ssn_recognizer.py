@@ -1,51 +1,60 @@
-from unittest import TestCase
+import pytest
 
-from assertions import assert_result, assert_result_within_score_range
-from analyzer.predefined_recognizers import UsSsnRecognizer
-
-us_ssn_recognizer = UsSsnRecognizer()
-entities = ["US_SSN"]
+from tests import assert_result_within_score_range
+from presidio_analyzer.predefined_recognizers import UsSsnRecognizer
 
 
-class TestUsSsnRecognizer(TestCase):
+@pytest.fixture(scope="module")
+def recognizer():
+    return UsSsnRecognizer()
 
-    def test_valid_us_ssn_very_weak_match(self):
-        num1 = '078-051120'
-        num2 = '07805-1120'
-        results = us_ssn_recognizer.analyze(
-            '{} {}'.format(num1, num2), entities)
 
-        assert len(results) == 2
+@pytest.fixture(scope="module")
+def entities():
+    return ["US_SSN"]
 
-        assert results[0].score != 0
+
+@pytest.mark.parametrize(
+    "text, expected_len, expected_positions, expected_score_ranges",
+    [
+        # fmt: off
+        # very weak match
+        ("078-051121 07805-1121", 2, ((0, 10), (11, 21),), ((0.0, 0.3), (0.0, 0.3),),),
+        # weak match
+        ("078051121", 1, ((0, 9),), ((0.0, 0.4),),),
+        # medium match
+        ("078-05-1123", 1, ((0, 11),), ((0.5, 0.6),),),
+        ("078.05.1123", 1, ((0, 11),), ((0.5, 0.6),),),
+        ("078 05 1123", 1, ((0, 11),), ((0.5, 0.6),),),
+        ("abc 078 05 1123 abc", 1, ((4, 15),), ((0.5, 0.6),),),
+        # no match
+        ("0780511201", 0, (), (),),
+        ("078051120", 0, (), (),),
+        ("000000000", 0, (), (),),
+        ("666000000", 0, (), (),),
+        ("078-05-0000", 0, (), (),),
+        ("078 00 1123", 0, (), (),),
+        ("693-09.4444", 0, (), (),),
+        # fmt: on
+    ],
+)
+def test_when_snn_in_text_than_all_us_ssns_are_found(
+    text,
+    expected_len,
+    expected_positions,
+    expected_score_ranges,
+    recognizer,
+    entities,
+    max_score,
+):
+    results = recognizer.analyze(text, entities)
+    results = sorted(results, key=lambda x: x.start)
+    assert len(results) == expected_len
+    for res, (st_pos, fn_pos), (st_score, fn_score) in zip(
+        results, expected_positions, expected_score_ranges
+    ):
+        if fn_score == "max":
+            fn_score = max_score
         assert_result_within_score_range(
-            results[0], entities[0], 0, 10, 0, 0.3)
-
-        assert results[0].score != 0
-        assert_result_within_score_range(
-            results[1], entities[0], 11, 21, 0, 0.3)
-
-    def test_valid_us_ssn_weak_match(self):
-        num = '078051120'
-        results = us_ssn_recognizer.analyze(num, entities)
-
-        assert len(results) == 1
-        assert results[0].score != 0
-        assert_result_within_score_range(
-            results[0], entities[0], 0, 9, 0.3, 0.4)
-
-    def test_valid_us_ssn_medium_match(self):
-        num = '078-05-1120'
-        results = us_ssn_recognizer.analyze(num, entities)
-
-        assert len(results) == 1
-        assert results[0].score != 0
-        assert_result_within_score_range(
-            results[0], entities[0], 0, 11, 0.5, 0.6)
-        assert 0.49 < results[0].score < 0.6
-
-    def test_invalid_us_ssn(self):
-        num = '078-05-11201'
-        results = us_ssn_recognizer.analyze(num, entities)
-
-        assert len(results) == 0
+            res, entities[0], st_pos, fn_pos, st_score, fn_score
+        )

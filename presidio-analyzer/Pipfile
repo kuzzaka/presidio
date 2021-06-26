@@ -4,17 +4,17 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-cython = "*"
-spacy = "*"
-en_core_web_lg = {file = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-2.1.0/en_core_web_lg-2.1.0.tar.gz"}
+spacy = "==3.0.6"
 regex = "*"
-pyre2 = {file = "https://github.com/torosent/pyre2/archive/release/0.2.23.zip"}
-grpcio = "*"
-protobuf = "*"
 tldextract = "*"
-knack = "*"
+numpy = "==1.19.3"
+flask = "==1.1.2"
+pyyaml = "*"
+pydantic = "1.7.4"
+phonenumbers = "8.12.24"
 
 [dev-packages]
 pytest = "*"
-flake8= "*"
-pylint = {version = "==2.3.1"}
+flake8= {version = "==3.7.9"}
+pep8-naming = "*"
+flake8-docstrings = "*"
